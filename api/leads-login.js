@@ -3,9 +3,6 @@ import nodemailer from "nodemailer";
 const isGmail = (email) =>
   /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(String(email || "").trim());
 
-const is10Digits = (phone) =>
-  /^\d{10}$/.test(String(phone || "").trim());
-
 function prettyPurpose(purpose) {
   const map = {
     complisight: "CompliSight",
@@ -38,103 +35,115 @@ function getTransporter() {
 }
 
 /* -----------------------------------------------------
-   TEXT EMAIL (fallback)
+   TEXT EMAIL
 ----------------------------------------------------- */
 
-function buildLeadEmailText({ name, email, phone, purpose, pageUrl }) {
+function buildLeadEmailText({
+  name,
+  email,
+  company,
+  purpose,
+  message,
+  pageUrl,
+}) {
   return (
     `Hi Team,\n\n` +
     `A visitor has submitted their details on the CloudSeals website.\n\n` +
     `Customer Details\n` +
     `-----------------------------\n` +
-    `Name    : ${name}\n` +
-    `Email   : ${email}\n` +
-    `Phone   : ${phone}\n` +
-    `Purpose : ${prettyPurpose(purpose)}\n` +
-    `Page    : ${pageUrl || "-"}\n\n` +
+    `Name     : ${name}\n` +
+    `Email    : ${email}\n` +
+    `Company  : ${company}\n` +
+    `Purpose  : ${prettyPurpose(purpose)}\n` +
+    `Message  : ${message}\n` +
+    `Page     : ${pageUrl || "-"}\n\n` +
     `Regards,\n` +
     `CloudSeals Website Notification\n`
   );
 }
 
 /* -----------------------------------------------------
-   HTML EMAIL (Professional Layout)
+   HTML EMAIL
 ----------------------------------------------------- */
 
-function buildLeadEmailHTML({ name, email, phone, purpose, pageUrl }) {
+function buildLeadEmailHTML({
+  name,
+  email,
+  company,
+  purpose,
+  message,
+  pageUrl,
+}) {
   return `
   <div style="font-family:Arial,Helvetica,sans-serif;background:#f4f6f9;padding:40px">
+    <table width="650" align="center" style="background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e5e5">
+      <tr>
+        <td style="background:#0c2b5a;color:white;padding:22px;font-size:22px;font-weight:bold">
+          <img src="https://cloudseals.com/logo.png" style="height:40px;margin-bottom:6px"/>
+          CLOUDSEALS
+          <div style="font-size:13px;opacity:.85">Pioneering Deep Tech Solutions</div>
+        </td>
+      </tr>
 
-  <table width="650" align="center" style="background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e5e5">
+      <tr>
+        <td style="padding:25px">
+          <h2 style="margin-top:0;color:#222">🔔 New Website Lead</h2>
 
-  <tr>
-  <td style="background:#0c2b5a;color:white;padding:22px;font-size:22px;font-weight:bold">
-  <img src="https://cloudseals.com/logo.png"
-style="height:40px;margin-bottom:6px"/>
-CLOUDSEALS
-  <div style="font-size:13px;opacity:.85">Pioneering Deep Tech Solutions</div>
-  </td>
-  </tr>
+          <p style="color:#444">
+            A visitor has submitted their details through the website popup.
+          </p>
 
-  <tr>
-  <td style="padding:25px">
+          <table width="100%" cellpadding="10" cellspacing="0" border="1"
+            style="border-collapse:collapse;border-color:#e3e3e3">
 
-  <h2 style="margin-top:0;color:#222">🔔 New Website Lead</h2>
+            <tr style="background:#f2f4f7">
+              <th align="left">Field</th>
+              <th align="left">Value</th>
+            </tr>
 
-  <p style="color:#444">
-  A visitor has submitted their details through the website popup.
-  </p>
+            <tr>
+              <td>Name</td>
+              <td>${name}</td>
+            </tr>
 
-  <table width="100%" cellpadding="10" cellspacing="0" border="1" 
-  style="border-collapse:collapse;border-color:#e3e3e3">
+            <tr>
+              <td>Email</td>
+              <td>${email}</td>
+            </tr>
 
-  <tr style="background:#f2f4f7">
-  <th align="left">Field</th>
-  <th align="left">Value</th>
-  </tr>
+            <tr>
+              <td>Company</td>
+              <td>${company}</td>
+            </tr>
 
-  <tr>
-  <td>Name</td>
-  <td>${name}</td>
-  </tr>
+            <tr>
+              <td>Purpose</td>
+              <td>${prettyPurpose(purpose)}</td>
+            </tr>
 
-  <tr>
-  <td>Email</td>
-  <td>${email}</td>
-  </tr>
+            <tr>
+              <td>Message</td>
+              <td>${message}</td>
+            </tr>
 
-  <tr>
-  <td>Phone</td>
-  <td>${phone}</td>
-  </tr>
+            <tr>
+              <td>Page</td>
+              <td>${pageUrl || "-"}</td>
+            </tr>
+          </table>
 
-  <tr>
-  <td>Purpose</td>
-  <td>${prettyPurpose(purpose)}</td>
-  </tr>
+          <p style="margin-top:20px;color:#444">
+            Please follow up with this lead.
+          </p>
+        </td>
+      </tr>
 
-  <tr>
-  <td>Page</td>
-  <td>${pageUrl || "-"}</td>
-  </tr>
-
-  </table>
-
-  <p style="margin-top:20px;color:#444">
-  Please follow up with this lead.
-  </p>
-
-  </td>
-  </tr>
-
-  <tr>
-  <td style="background:#f5f5f5;padding:15px;font-size:12px;color:#777">
-  This is an automated message from the CloudSeals website.
-  </td>
-  </tr>
-
-  </table>
-
+      <tr>
+        <td style="background:#f5f5f5;padding:15px;font-size:12px;color:#777">
+          This is an automated message from the CloudSeals website.
+        </td>
+      </tr>
+    </table>
   </div>
   `;
 }
@@ -175,14 +184,21 @@ export default async function handler(req, res) {
       });
     }
 
-    const { name, email, phone, purpose, pageUrl } = req.body || {};
+    const {
+      name,
+      email,
+      company,
+      purpose,
+      message,
+      pageUrl,
+    } = req.body || {};
 
     /* ---------- VALIDATION ---------- */
 
-    if (!name || !email || !phone || !purpose) {
+    if (!name || !email || !company || !purpose || !message) {
       return res.status(400).json({
         ok: false,
-        error: "Missing name/email/phone/purpose",
+        error: "Missing required fields",
       });
     }
 
@@ -193,13 +209,6 @@ export default async function handler(req, res) {
       });
     }
 
-    if (!is10Digits(phone)) {
-      return res.status(400).json({
-        ok: false,
-        error: "Phone number must be exactly 10 digits.",
-      });
-    }
-
     /* ---------- EMAIL CONTENT ---------- */
 
     const subject = `🚀 New Website Lead | ${prettyPurpose(purpose)} | ${name}`;
@@ -207,16 +216,18 @@ export default async function handler(req, res) {
     const text = buildLeadEmailText({
       name,
       email,
-      phone,
+      company,
       purpose,
+      message,
       pageUrl,
     });
 
     const html = buildLeadEmailHTML({
       name,
       email,
-      phone,
+      company,
       purpose,
+      message,
       pageUrl,
     });
 
@@ -233,9 +244,8 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
     });
-
   } catch (err) {
-    console.error("leads-login error:", err);
+    console.error("leads-contact error:", err);
 
     return res.status(500).json({
       ok: false,
