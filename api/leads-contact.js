@@ -7,9 +7,6 @@ import nodemailer from "nodemailer";
 const isGmail = (email) =>
   /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(String(email || "").trim());
 
-const is10Digits = (phone) =>
-  /^\d{10}$/.test(String(phone || "").trim());
-
 function prettyPurpose(purpose) {
   const map = {
     complisight: "CompliSight",
@@ -43,13 +40,12 @@ function getTransporter() {
 }
 
 /* -----------------------------------------------------
-   TEXT EMAIL (Fallback)
+   TEXT EMAIL
 ----------------------------------------------------- */
 
 function buildLeadEmailText({
   name,
   email,
-  phone,
   company,
   purpose,
   message,
@@ -62,7 +58,6 @@ function buildLeadEmailText({
     `-----------------------------\n` +
     `Name    : ${name}\n` +
     `Email   : ${email}\n` +
-    `Phone   : ${phone}\n` +
     `Company : ${company || "-"}\n` +
     `Purpose : ${prettyPurpose(purpose)}\n` +
     `Page    : ${pageUrl || "-"}\n\n` +
@@ -75,13 +70,12 @@ function buildLeadEmailText({
 }
 
 /* -----------------------------------------------------
-   HTML EMAIL (Professional)
+   HTML EMAIL
 ----------------------------------------------------- */
 
 function buildLeadEmailHTML({
   name,
   email,
-  phone,
   company,
   purpose,
   message,
@@ -134,11 +128,6 @@ style="border-collapse:collapse;border-color:#e3e3e3">
 </tr>
 
 <tr>
-<td>Phone</td>
-<td>${phone}</td>
-</tr>
-
-<tr>
 <td>Company</td>
 <td>${company || "-"}</td>
 </tr>
@@ -184,7 +173,6 @@ This is an automated notification from the CloudSeals website.
 ----------------------------------------------------- */
 
 export default async function handler(req, res) {
-
   /* ---------- CORS ---------- */
 
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -203,7 +191,6 @@ export default async function handler(req, res) {
   }
 
   try {
-
     const {
       ALERT_EMAIL_USER,
       ALERT_EMAIL_APP_PASS,
@@ -220,7 +207,6 @@ export default async function handler(req, res) {
     const {
       name,
       email,
-      phone,
       company,
       purpose,
       message,
@@ -229,7 +215,7 @@ export default async function handler(req, res) {
 
     /* ---------- VALIDATION ---------- */
 
-    if (!name || !email || !phone || !purpose || !message) {
+    if (!name || !email || !company || !purpose || !message) {
       return res.status(400).json({
         ok: false,
         error: "Missing required fields",
@@ -243,13 +229,6 @@ export default async function handler(req, res) {
       });
     }
 
-    if (!is10Digits(phone)) {
-      return res.status(400).json({
-        ok: false,
-        error: "Phone number must be exactly 10 digits.",
-      });
-    }
-
     /* ---------- EMAIL CONTENT ---------- */
 
     const subject =
@@ -258,7 +237,6 @@ export default async function handler(req, res) {
     const text = buildLeadEmailText({
       name,
       email,
-      phone,
       company,
       purpose,
       message,
@@ -268,7 +246,6 @@ export default async function handler(req, res) {
     const html = buildLeadEmailHTML({
       name,
       email,
-      phone,
       company,
       purpose,
       message,
@@ -288,15 +265,12 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
     });
-
   } catch (err) {
-
     console.error("leads-contact error:", err);
 
     return res.status(500).json({
       ok: false,
       error: err?.message || "Server error",
     });
-
   }
 }
