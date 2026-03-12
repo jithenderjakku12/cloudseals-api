@@ -69,7 +69,9 @@ function buildLeadEmailHTML({ name, email, phone, purpose, pageUrl }) {
 
   <tr>
   <td style="background:#0c2b5a;color:white;padding:22px;font-size:22px;font-weight:bold">
-  CLOUDSEALS
+  <img src="https://cloudseals.com/logo.png"
+style="height:40px;margin-bottom:6px"/>
+CLOUDSEALS
   <div style="font-size:13px;opacity:.85">Pioneering Deep Tech Solutions</div>
   </td>
   </tr>
