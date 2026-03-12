@@ -2,7 +2,9 @@ import nodemailer from "nodemailer";
 
 const isGmail = (email) =>
   /^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(String(email || "").trim());
-const is10Digits = (phone) => /^\d{10}$/.test(String(phone || ""));
+
+const is10Digits = (phone) =>
+  /^\d{10}$/.test(String(phone || "").trim());
 
 function prettyPurpose(purpose) {
   const map = {
@@ -17,6 +19,7 @@ function prettyPurpose(purpose) {
 }
 
 let transporter;
+
 function getTransporter() {
   if (transporter) return transporter;
 
@@ -25,18 +28,25 @@ function getTransporter() {
 
   transporter = nodemailer.createTransport({
     service: "gmail",
-    auth: { user, pass },
+    auth: {
+      user,
+      pass,
+    },
   });
 
   return transporter;
 }
+
+/* -----------------------------------------------------
+   TEXT EMAIL (fallback)
+----------------------------------------------------- */
 
 function buildLeadEmailText({ name, email, phone, purpose, pageUrl }) {
   return (
     `Hi Team,\n\n` +
     `A visitor has submitted their details on the CloudSeals website.\n\n` +
     `Customer Details\n` +
-    `----------------\n` +
+    `-----------------------------\n` +
     `Name    : ${name}\n` +
     `Email   : ${email}\n` +
     `Phone   : ${phone}\n` +
@@ -47,47 +57,151 @@ function buildLeadEmailText({ name, email, phone, purpose, pageUrl }) {
   );
 }
 
+/* -----------------------------------------------------
+   HTML EMAIL (Professional Layout)
+----------------------------------------------------- */
+
+function buildLeadEmailHTML({ name, email, phone, purpose, pageUrl }) {
+  return `
+  <div style="font-family:Arial,Helvetica,sans-serif;background:#f4f6f9;padding:40px">
+
+  <table width="650" align="center" style="background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e5e5e5">
+
+  <tr>
+  <td style="background:#0c2b5a;color:white;padding:22px;font-size:22px;font-weight:bold">
+  CLOUDSEALS
+  <div style="font-size:13px;opacity:.85">Pioneering Deep Tech Solutions</div>
+  </td>
+  </tr>
+
+  <tr>
+  <td style="padding:25px">
+
+  <h2 style="margin-top:0;color:#222">🔔 New Website Lead</h2>
+
+  <p style="color:#444">
+  A visitor has submitted their details through the website popup.
+  </p>
+
+  <table width="100%" cellpadding="10" cellspacing="0" border="1" 
+  style="border-collapse:collapse;border-color:#e3e3e3">
+
+  <tr style="background:#f2f4f7">
+  <th align="left">Field</th>
+  <th align="left">Value</th>
+  </tr>
+
+  <tr>
+  <td>Name</td>
+  <td>${name}</td>
+  </tr>
+
+  <tr>
+  <td>Email</td>
+  <td>${email}</td>
+  </tr>
+
+  <tr>
+  <td>Phone</td>
+  <td>${phone}</td>
+  </tr>
+
+  <tr>
+  <td>Purpose</td>
+  <td>${prettyPurpose(purpose)}</td>
+  </tr>
+
+  <tr>
+  <td>Page</td>
+  <td>${pageUrl || "-"}</td>
+  </tr>
+
+  </table>
+
+  <p style="margin-top:20px;color:#444">
+  Please follow up with this lead.
+  </p>
+
+  </td>
+  </tr>
+
+  <tr>
+  <td style="background:#f5f5f5;padding:15px;font-size:12px;color:#777">
+  This is an automated message from the CloudSeals website.
+  </td>
+  </tr>
+
+  </table>
+
+  </div>
+  `;
+}
+
+/* -----------------------------------------------------
+   API HANDLER
+----------------------------------------------------- */
+
 export default async function handler(req, res) {
-  // ✅ CORS
+  /* ---------- CORS ---------- */
+
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST")
-    return res.status(405).json({ ok: false, error: "Method not allowed" });
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
+  if (req.method !== "POST") {
+    return res.status(405).json({
+      ok: false,
+      error: "Method not allowed",
+    });
+  }
 
   try {
-    const { ALERT_EMAIL_USER, ALERT_EMAIL_APP_PASS, LEADS_TO_EMAIL } =
-      process.env;
+    const {
+      ALERT_EMAIL_USER,
+      ALERT_EMAIL_APP_PASS,
+      LEADS_TO_EMAIL,
+    } = process.env;
 
     if (!ALERT_EMAIL_USER || !ALERT_EMAIL_APP_PASS || !LEADS_TO_EMAIL) {
-      return res
-        .status(500)
-        .json({ ok: false, error: "Missing Vercel env vars for email." });
+      return res.status(500).json({
+        ok: false,
+        error: "Missing Vercel env vars for email.",
+      });
     }
 
     const { name, email, phone, purpose, pageUrl } = req.body || {};
 
+    /* ---------- VALIDATION ---------- */
+
     if (!name || !email || !phone || !purpose) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "Missing name/email/phone/purpose" });
+      return res.status(400).json({
+        ok: false,
+        error: "Missing name/email/phone/purpose",
+      });
     }
 
     if (!isGmail(email)) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "Email must be a valid @gmail.com address." });
+      return res.status(400).json({
+        ok: false,
+        error: "Email must be a valid @gmail.com address.",
+      });
     }
 
     if (!is10Digits(phone)) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "Phone number must be exactly 10 digits." });
+      return res.status(400).json({
+        ok: false,
+        error: "Phone number must be exactly 10 digits.",
+      });
     }
 
-    const subject = `New Lead - ${prettyPurpose(purpose)} | ${name}`;
+    /* ---------- EMAIL CONTENT ---------- */
+
+    const subject = `🚀 New Website Lead | ${prettyPurpose(purpose)} | ${name}`;
+
     const text = buildLeadEmailText({
       name,
       email,
@@ -96,18 +210,34 @@ export default async function handler(req, res) {
       pageUrl,
     });
 
+    const html = buildLeadEmailHTML({
+      name,
+      email,
+      phone,
+      purpose,
+      pageUrl,
+    });
+
+    /* ---------- SEND EMAIL ---------- */
+
     await getTransporter().sendMail({
-      from: ALERT_EMAIL_USER,
+      from: `"CloudSeals Website" <${ALERT_EMAIL_USER}>`,
       to: LEADS_TO_EMAIL,
       subject,
       text,
+      html,
     });
 
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({
+      ok: true,
+    });
+
   } catch (err) {
     console.error("leads-login error:", err);
-    return res
-      .status(500)
-      .json({ ok: false, error: err?.message || "Server error" });
+
+    return res.status(500).json({
+      ok: false,
+      error: err?.message || "Server error",
+    });
   }
 }
